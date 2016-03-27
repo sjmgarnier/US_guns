@@ -1,0 +1,86 @@
+---
+title: "US gun sales and background checks"
+author: "Simon Garnier"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output:
+  html_document:
+    css: custom.css
+    fig_caption: true
+    fig_width: 10
+    fig_height: 7.5
+    number_sections: true
+    theme: cosmo
+    toc: true
+---
+
+--- 
+
+```{r, 'setup', message=FALSE, echo=FALSE}
+library(gunsales)
+library(dplyr)
+library(lubridate)
+library(ggplot2)
+library(scales)
+library(maps)
+library(graphZoo)
+library(RColorBrewer)
+library(viridis)
+library(animation)
+
+simpleCap <- function(x) {
+  s <- strsplit(x, " ")[[1]]
+  paste(toupper(substring(s, 1, 1)), substring(s, 2),
+        sep = "", collapse = " ")
+}
+
+gBackground <- gz_background(bg = "#FFFFFF00")
+gBanner <- gz_banner(l.txt = "GRAPHZOO.TUMBLR.COM", 
+                     r.txt = "DATA: FBI",
+                     font.size = 5)
+cbf <- brewer.pal(8, "Dark2")
+
+dat <- mutate(alldata, state = sapply(state, simpleCap)) %>%
+  mutate(date = as.Date(ymd(paste(year, month.num, 1, sep = "/")))) %>%
+  filter(date >= "1999-01-01")
+  
+```
+
+
+# Gun sales by month
+
+```{r, 'figure_1', dpi=300, warning=FALSE}
+salesByMonth <- group_by(dat, date) %>%
+  summarize(sales = sum(guns_sold)) %>%
+  mutate(year = year(date),
+         month = month(date, label = TRUE))
+
+maxByYear <- filter(salesByMonth, year < 2015) %>%
+  group_by(year) %>%
+  filter(sales == max(sales))
+
+g <- ggplot(salesByMonth, aes(x = date, y = sales)) +
+  geom_line(color = cbf[2], size = 1.5) +
+  geom_area(fill = cbf[2], alpha = 0.25) + 
+  annotate("text", x = maxByYear$date, y = maxByYear$sales + 100000,
+           label = paste(maxByYear$month, maxByYear$year), 
+           angle = 60, hjust = 0, fontface = "bold") +
+  scale_x_date(name = NULL, expand = c(0, 0)) +
+  scale_y_continuous(name = NULL, labels = comma, 
+                     limits = c(0, 1.11 * max(salesByMonth$sales, na.rm = TRUE))) + 
+  theme_graphzoo(base_size = 18)
+  
+gTitle <- gz_title("US gun sales since 1999", size = 9)
+gSubtitle <- gz_title("Units sold by month + month with most sales each year", 
+                      y = 0.9125, size = 6, fontface = "italic")
+
+gz_combine(g, gBackground, gTitle, gSubtitle, gBanner,
+             top = c(0.875, 1, 1, 1, 0.05), 
+             bottom = c(0.025, 0, 0, 0, 0))
+```
+<p class="caption">**Figure 1:** US gun sales since 1999. Units sold by month + 
+month with most sales each year.</p>
+
+[Back to top]("#")
+
+---
+
