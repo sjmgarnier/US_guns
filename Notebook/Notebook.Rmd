@@ -35,7 +35,7 @@ simpleCap <- function(x) {
 
 gBackground <- gz_background(bg = "#FFFFFF00")
 gBanner <- gz_banner(l.txt = "GRAPHZOO.TUMBLR.COM", 
-                     r.txt = "DATA: FBI",
+                     r.txt = "DATA: NY TIMES, FBI",
                      font.size = 5)
 cbf <- brewer.pal(8, "Dark2")
 
