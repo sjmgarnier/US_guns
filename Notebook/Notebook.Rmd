@@ -16,7 +16,9 @@ output:
 --- 
 
 ```{r, 'setup', message=FALSE, echo=FALSE}
+devtools::install_github("NYTimes/gunsales")
 library(gunsales)
+library(seasonal)
 library(dplyr)
 library(lubridate)
 library(ggplot2)
@@ -24,8 +26,6 @@ library(scales)
 library(maps)
 library(graphZoo)
 library(RColorBrewer)
-library(viridis)
-library(animation)
 
 simpleCap <- function(x) {
   s <- strsplit(x, " ")[[1]]
@@ -41,8 +41,7 @@ cbf <- brewer.pal(8, "Dark2")
 
 dat <- mutate(alldata, state = sapply(state, simpleCap)) %>%
   mutate(date = as.Date(ymd(paste(year, month.num, 1, sep = "/")))) %>%
-  filter(date >= "1999-01-01")
-  
+  filter(date >= "1999-01-01", state != "Totals")
 ```
 
 
@@ -52,10 +51,10 @@ dat <- mutate(alldata, state = sapply(state, simpleCap)) %>%
 salesByMonth <- group_by(dat, date) %>%
   summarize(sales = sum(guns_sold)) %>%
   mutate(year = year(date),
-         month = month(date, label = TRUE))
+         month = month(date, label = TRUE)) %>%
+  filter(year >= 2000)
 
-maxByYear <- filter(salesByMonth, year < 2015) %>%
-  group_by(year) %>%
+maxByYear <- group_by(salesByMonth, year) %>%
   filter(sales == max(sales))
 
 g <- ggplot(salesByMonth, aes(x = date, y = sales)) +
@@ -66,10 +65,10 @@ g <- ggplot(salesByMonth, aes(x = date, y = sales)) +
            angle = 60, hjust = 0, fontface = "bold") +
   scale_x_date(name = NULL, expand = c(0, 0)) +
   scale_y_continuous(name = NULL, labels = comma, 
-                     limits = c(0, 1.11 * max(salesByMonth$sales, na.rm = TRUE))) + 
+                     limits = c(0, 1.13 * max(salesByMonth$sales, na.rm = TRUE))) + 
   theme_graphzoo(base_size = 18)
   
-gTitle <- gz_title("US gun sales since 1999", size = 9)
+gTitle <- gz_title("US gun sales since 2000", size = 9)
 gSubtitle <- gz_title("Units sold by month + month with most sales each year", 
                       y = 0.9125, size = 6, fontface = "italic")
 
@@ -79,6 +78,54 @@ gz_combine(g, gBackground, gTitle, gSubtitle, gBanner,
 ```
 <p class="caption">**Figure 1:** US gun sales since 1999. Units sold by month + 
 month with most sales each year.</p>
+
+[Back to top]("#")
+
+---
+
+
+# Gun sales by month seasonally adjusted
+
+```{r, 'figure_2', dpi=300, warning=FALSE}
+tmp <- ts(salesByMonth$sales, start = c(1999, 1), deltat = 1/12) %>%
+  seas() %>% final() %>% as.matrix()
+pad <- nrow(salesByMonth) - length(tmp)
+
+salesByMonthAdjust <- mutate(salesByMonth,
+                             sales = c(tmp, rep(NA, pad))) %>%
+  filter(year >= 2000)
+
+events <- data.frame(date = as.Date(c("2001-09-11", 
+                                      "2008-11-04",
+                                      "2012-11-07")),
+                     event = c("Sept. 11 attacks", 
+                               "1st election of\nBarack Obama",
+                               "2nd election of\nBarack Obama")) %>%
+  mutate(sales = salesByMonthAdjust$sales[salesByMonthAdjust$date %in% floor_date(date, unit = "month")]) %>%
+  mutate(sales = sales * c(1.5, 1.5, 2))
+
+g <- ggplot(salesByMonthAdjust, aes(x = date, y = sales)) +
+  geom_line(color = cbf[2], size = 1.5) +
+  geom_area(fill = cbf[2], alpha = 0.25) +
+  geom_segment(data = events, aes(x = date, y = sales, xend = date, yend = 0),
+               linetype = 2) +
+  annotate("text", x = events$date, y = events$sales,
+           label = events$event, size = 5,
+           hjust = -0.05, vjust = 1, fontface = "bold") +
+  scale_x_date(name = NULL, expand = c(0, 0)) +
+  scale_y_continuous(name = NULL, labels = comma) + 
+  theme_graphzoo(base_size = 18)
+  
+gTitle <- gz_title("US gun sales since 2000", size = 9)
+gSubtitle <- gz_title("Units sold by month (seasonally adjusted)", 
+                      y = 0.9125, size = 6, fontface = "italic")
+
+gz_combine(g, gBackground, gTitle, gSubtitle, gBanner,
+             top = c(0.875, 1, 1, 1, 0.05), 
+             bottom = c(0.025, 0, 0, 0, 0))
+```
+<p class="caption">**Figure 2:** US gun sales since 2000 Units sold by month 
+(seasonally adjusted).</p>
 
 [Back to top]("#")
 
