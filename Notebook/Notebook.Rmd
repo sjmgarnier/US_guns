@@ -97,20 +97,22 @@ salesByMonthAdjust <- mutate(salesByMonth,
 
 events <- data.frame(date = as.Date(c("2001-09-11", 
                                       "2008-11-04",
-                                      "2012-11-07")),
+                                      "2012-11-07",
+                                      "2012-12-14")),
                      event = c("Sept. 11 attacks", 
-                               "1st election of\nBarack Obama",
-                               "2nd election of\nBarack Obama")) %>%
+                               "Barack Obama\nelection",
+                               "Barack Obama\nre-election",
+                               "Sandy Hook\nShooting")) %>%
   mutate(sales = salesByMonthAdjust$sales[salesByMonthAdjust$date %in% floor_date(date, unit = "month")]) %>%
-  mutate(sales = sales * c(1.5, 1.5, 2))
+  mutate(sales = sales * c(1.5, 1.5, 2, 1.42))
 
 g <- ggplot(salesByMonthAdjust, aes(x = date, y = sales)) +
-  geom_line(color = cbf[2], size = 1.5) +
-  geom_area(fill = cbf[2], alpha = 0.25) +
   geom_segment(data = events, aes(x = date, y = sales, xend = date, yend = 0),
                linetype = 2) +
+  geom_line(color = cbf[2], size = 1.5) +
+  geom_area(fill = cbf[2], alpha = 0.25) +
   annotate("text", x = events$date, y = events$sales,
-           label = events$event, size = 5,
+           label = events$event, size = 4,
            hjust = -0.05, vjust = 1, fontface = "bold") +
   scale_x_date(name = NULL, expand = c(0, 0)) +
   scale_y_continuous(name = NULL, labels = comma) + 
